@@ -206,21 +206,21 @@
             // 
             this.label4.AutoSize = true;
             this.label4.Font = new System.Drawing.Font("굴림", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.label4.Location = new System.Drawing.Point(19, 244);
+            this.label4.Location = new System.Drawing.Point(8, 244);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(65, 15);
+            this.label4.Size = new System.Drawing.Size(88, 15);
             this.label4.TabIndex = 12;
-            this.label4.Text = "LowVolt";
+            this.label4.Text = "LowVolt(V)";
             // 
             // label3
             // 
             this.label3.AutoSize = true;
             this.label3.Font = new System.Drawing.Font("굴림", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.label3.Location = new System.Drawing.Point(17, 184);
+            this.label3.Location = new System.Drawing.Point(6, 184);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(68, 15);
+            this.label3.Size = new System.Drawing.Size(91, 15);
             this.label3.TabIndex = 11;
-            this.label3.Text = "HighVolt";
+            this.label3.Text = "HighVolt(V)";
             // 
             // label2
             // 

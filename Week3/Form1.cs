@@ -43,6 +43,11 @@ namespace Week3
         private DateTime lastEdgeTime = DateTime.Now;
         private double previousVoltage = 0;
 
+        private double appliedPeriod;
+        private double appliedDutyCycle;
+
+        private NationalInstruments.UI.XYCursor captureCursor;
+
         public Form1()
         {
             InitializeComponent();
@@ -99,13 +104,21 @@ namespace Week3
         // AO -> AI 데이터 처리 시작
         private void StartMultimediaTimerAO()
         {
-            System.Threading.Tasks.Task.Run(() => GeneratePWMAndReadAIAsync());
+            if (!flagAO)
+            {
+                flagAO = true;
+                System.Threading.Tasks.Task.Run(() => GeneratePWMAndReadAIAsync());
+            }
         }
 
         // DO -> AI 데이터 처리 시작
         private void StartMultimediaTimerDO()
         {
-            System.Threading.Tasks.Task.Run(() => GenerateDigitalPWM());
+            if (!flagDO)
+            {
+                flagDO = true;
+                System.Threading.Tasks.Task.Run(() => GenerateDigitalPWM());
+            }
         }
 
         private void StopMultimediaTimerAO()
@@ -121,8 +134,12 @@ namespace Week3
 
         private async System.Threading.Tasks.Task GeneratePWMAndReadAIAsync()
         {
-            flagAO = true;
             lastPwmTime = DateTime.Now; // 시작할 때 시간을 초기화
+
+            double totalHighTime = 0;  // 누적 high time을 저장
+            double totalLowTime = 0;   // 누적 low time을 저장
+            DateTime highStartTime = DateTime.Now;
+            DateTime lowStartTime = DateTime.Now;
 
             while (flagAO)
             {
@@ -133,30 +150,58 @@ namespace Week3
                 ao_pwmElapsed += elapsedSeconds;
                 lastPwmTime = currentTime;
 
+                // PWM 신호 생성 (고정된 파라미터로 신호를 만듦)
                 if (ao_pwmStateHigh && ao_pwmElapsed >= ao_highTime)
                 {
                     writer.WriteSingleSample(true, ao_LowV);
                     ao_pwmStateHigh = false;
                     ao_pwmElapsed = 0;
+                    lowStartTime = DateTime.Now;  // Low 상태 시작 시점 기록
                 }
                 else if (!ao_pwmStateHigh && ao_pwmElapsed >= ao_lowTime)
                 {
                     writer.WriteSingleSample(true, ao_HighV);
                     ao_pwmStateHigh = true;
                     ao_pwmElapsed = 0;
+                    highStartTime = DateTime.Now;  // High 상태 시작 시점 기록
                 }
 
+                // AI 신호 측정 (실제 신호에서 rising/falling edge 탐지)
                 double inputVoltage = analogReader.ReadSingleSample();
 
+                // Rising edge 감지: low에서 high로 변환될 때
                 if (previousVoltage <= (ao_LowV + 0.1) && inputVoltage >= (ao_HighV - 0.1))
                 {
-                    TimeSpan periodTime = currentTime - lastEdgeTime;
-                    lastEdgeTime = currentTime;
+                    // Falling edge가 있었을 경우 low time 계산
+                    if (lowStartTime != DateTime.MinValue)
+                    {
+                        TimeSpan lowTimeSpan = currentTime - lowStartTime;
+                        totalLowTime = lowTimeSpan.TotalMilliseconds;
+                    }
 
-                    double period = periodTime.TotalSeconds * 1000;
-                    double calculatedFrequency = 1000 / period;
-                    double actualDutyCycle = (ao_highTime / periodTime.TotalSeconds) * 100;
+                    highStartTime = currentTime;  // Rising edge에서 high 시작
+                }
+                // Falling edge 감지: high에서 low로 변환될 때
+                else if (previousVoltage >= (ao_HighV - 0.1) && inputVoltage <= (ao_LowV + 0.1))
+                {
+                    // Rising edge가 있었을 경우 high time 계산
+                    if (highStartTime != DateTime.MinValue)
+                    {
+                        TimeSpan highTimeSpan = currentTime - highStartTime;
+                        totalHighTime = highTimeSpan.TotalMilliseconds;
+                    }
 
+                    lowStartTime = currentTime;  // Falling edge에서 low 시작
+                }
+
+                // 실제 주기와 듀티 계산
+                if (totalHighTime > 0 && totalLowTime > 0)
+                {
+                    double period = totalHighTime + totalLowTime;  // 주기 계산
+                    double actualDutyCycle = (totalHighTime / period) * 100;  // 듀티 사이클 계산
+                    double calculatedFrequency = 1000 / period;  // 주파수 계산
+
+                    // UI에 표시
                     this.Invoke((MethodInvoker)delegate
                     {
                         lblPeriod.Text = period.ToString("F2");
@@ -167,6 +212,7 @@ namespace Week3
 
                 previousVoltage = inputVoltage;
 
+                // 실시간 그래프 업데이트
                 this.Invoke((MethodInvoker)delegate
                 {
                     ContinuousWfg.PlotYAppend(inputVoltage, elapsedSeconds);
@@ -178,10 +224,16 @@ namespace Week3
             lastPwmTime = DateTime.Now;
         }
 
+
+        // DO 신호 생성 및 AI 신호 측정 로직
         private async System.Threading.Tasks.Task GenerateDigitalPWM()
         {
-            flagDO = true;
             lastPwmTime = DateTime.Now; // 시작할 때 시간을 초기화
+
+            double totalHighTime = 0;  // 누적 high time을 저장
+            double totalLowTime = 0;   // 누적 low time을 저장
+            DateTime highStartTime = DateTime.Now;
+            DateTime lowStartTime = DateTime.Now;
 
             while (flagDO)
             {
@@ -192,33 +244,48 @@ namespace Week3
                 do_pwmElapsed += elapsedSeconds;
                 lastPwmTime = currentTime;
 
-                // PWM 상태 변경
+                // PWM 신호 생성
                 if (do_pwmStateHigh && do_pwmElapsed >= do_highTime)
                 {
-                    digitalWriter.WriteSingleSampleSingleLine(true, false); // Low 상태로 전환
+                    digitalWriter.WriteSingleSampleSingleLine(true, false);  // Low 상태로 전환
                     do_pwmStateHigh = false;
                     do_pwmElapsed = 0;
+                    lowStartTime = DateTime.Now;  // Low 상태 시작 시점 기록
                 }
                 else if (!do_pwmStateHigh && do_pwmElapsed >= do_lowTime)
                 {
-                    digitalWriter.WriteSingleSampleSingleLine(true, true); // High 상태로 전환
+                    digitalWriter.WriteSingleSampleSingleLine(true, true);  // High 상태로 전환
                     do_pwmStateHigh = true;
                     do_pwmElapsed = 0;
+                    highStartTime = DateTime.Now;  // High 상태 시작 시점 기록
                 }
 
-                // AI에서 DO 신호 읽기 (DO 신호를 아날로그 값으로 읽음)
+                // AI 신호 측정
                 double inputVoltage = digitalReader.ReadSingleSample();
 
+                // 신호에서 rising edge (low to high) 감지
                 if (previousVoltage <= (do_LowV + 0.1) && inputVoltage >= (do_HighV - 0.1))
                 {
-                    TimeSpan periodTime = currentTime - lastEdgeTime;
-                    lastEdgeTime = currentTime;
+                    TimeSpan lowTimeSpan = currentTime - lowStartTime;
+                    totalLowTime = lowTimeSpan.TotalMilliseconds;
+                    highStartTime = currentTime;  // high 시작
+                }
+                // 신호에서 falling edge (high to low) 감지
+                else if (previousVoltage >= (do_HighV - 0.1) && inputVoltage <= (do_LowV + 0.1))
+                {
+                    TimeSpan highTimeSpan = currentTime - highStartTime;
+                    totalHighTime = highTimeSpan.TotalMilliseconds;
+                    lowStartTime = currentTime;  // low 시작
+                }
 
-                    double period = periodTime.TotalSeconds * 1000; // ms 단위로 변환
-                    double calculatedFrequency = 1000 / period;
-                    double actualDutyCycle = (do_highTime / periodTime.TotalSeconds) * 100;
+                // rising edge와 falling edge 모두 감지된 경우 주기 및 듀티 계산
+                if (totalHighTime > 0 && totalLowTime > 0)
+                {
+                    double period = totalHighTime + totalLowTime;  // 주기 계산
+                    double actualDutyCycle = (totalHighTime / period) * 100;  // 듀티 사이클 계산
+                    double calculatedFrequency = 1000 / period;  // 주파수 계산
 
-                    // 주기, 빈도, 듀티 사이클 업데이트
+                    // 주기, 주파수, 듀티 사이클을 라벨에 표시
                     this.Invoke((MethodInvoker)delegate
                     {
                         lblPeriod2.Text = period.ToString("F2");
@@ -229,20 +296,17 @@ namespace Week3
 
                 previousVoltage = inputVoltage;
 
-                // 실시간 그래프에 신호 추가
+                // 그래프 업데이트
                 this.Invoke((MethodInvoker)delegate
                 {
                     ContinuousWfg2.PlotYAppend(inputVoltage, elapsedSeconds);
                 });
 
-                // 비동기적으로 1ms 대기
                 await System.Threading.Tasks.Task.Delay(1);
             }
 
             lastPwmTime = DateTime.Now;
         }
-
-
 
 
         // DO 신호 출력 함수 (디지털 출력)
@@ -270,10 +334,6 @@ namespace Week3
             double highTime = period * (dutyCycle / 100.0);
             double lowTime = period - highTime;
 
-            // 실제로 이 값들이 변경되고 있는지 MessageBox로 확인
-            MessageBox.Show(String.Format("!! DO Parameters Updated - Frequency: {0}, Duty Cycle: {1}, High Voltage: {2}, Low Voltage: {3}",
-                                          frequency, dutyCycle, HighV, LowV));
-
             do_frequency = frequency;
             do_highTime = highTime;
             do_lowTime = lowTime;
@@ -292,14 +352,13 @@ namespace Week3
                 {
                     frequencyDO = 1000 / (double)PeriodEdit.Value;
                     dutyCycleDO = (double)DutyEdit.Value;
-                    HighVDO = (double)HighEdit.Value;
-                    LowVDO = (double)LowEdit.Value;
+                    HighVDO = 3.3;
+                    LowVDO = 0;
 
                     lblPeriod2.Text = (1000 / frequencyDO).ToString("F2");
                     lblFrequency2.Text = frequencyDO.ToString("F2");
                     lblDuty2.Text = dutyCycleDO.ToString("F2");
 
-                    MessageBox.Show(string.Format("DO Parameters Updated - Frequency: {0}, Duty Cycle: {1}, High Voltage: {2}, Low Voltage: {3}", frequencyDO, dutyCycleDO, HighVDO, LowVDO));
                     UpdatePWMParametersDO(frequencyDO, dutyCycleDO, HighVDO, LowVDO);
                 }
                 else
@@ -314,6 +373,10 @@ namespace Week3
                     lblDuty.Text = dutyCycleAO.ToString("F2");
 
                     UpdatePWMParametersAO(frequencyAO, dutyCycleAO, HighVAO, LowVAO);
+
+                    // Apply된 주기와 듀티 저장
+                    appliedPeriod = (double)PeriodEdit.Value;
+                    appliedDutyCycle = (double)DutyEdit.Value;
                 }
 
                 MessageBox.Show("파라미터 업데이트 완료");
@@ -332,32 +395,67 @@ namespace Week3
                 return;
             }
 
+            // 실시간 계산된 주기 및 듀티 사이클 값 사용 (캡처 버튼을 누른 당시의 값)
+            double capturedPeriod = double.Parse(lblPeriod.Text);  // 캡처 버튼을 눌렀을 때의 실시간 주기
+            double capturedDutyCycle = double.Parse(lblDuty.Text); // 캡처 버튼을 눌렀을 때의 실시간 듀티 사이클
+
+            // highTime과 lowTime 계산 (실시간 측정값 기반)
+            double capturedHighTime = (capturedDutyCycle / 100.0) * capturedPeriod;
+            double capturedLowTime = capturedPeriod - capturedHighTime;
+
+            // 실시간 데이터 기반의 PWM 신호 생성
             List<double> capturedSignal = new List<double>();
+            double timeStep = 1.0; // 타임스텝(해상도)
 
-            double calculatedPeriod = double.Parse(lblPeriod.Text);
-            double calculatedDutyCycle = double.Parse(lblDuty.Text);
-
-            double highTime = (calculatedDutyCycle / 100.0) * calculatedPeriod;
-            double lowTime = calculatedPeriod - highTime;
-
-            double timeStep = 1.0;
-
-            for (double t = 0; t < calculatedPeriod; t += timeStep)
+            // 한 주기의 PWM 신호 생성
+            for (double t = 0; t < capturedPeriod; t += timeStep)
             {
-                if (t < highTime)
+                if (t < capturedHighTime)
                 {
-                    capturedSignal.Add(ao_HighV);
+                    capturedSignal.Add(ao_HighV);  // High 상태 (실시간 주기 및 듀티 사이클 기반)
                 }
                 else
                 {
-                    capturedSignal.Add(ao_LowV);
+                    capturedSignal.Add(ao_LowV);   // Low 상태 (실시간 주기 및 듀티 사이클 기반)
                 }
             }
 
+            // 캡처된 신호를 그래프에 표시
             if (capturedSignal.Count > 0)
             {
-                CaptureWfg.PlotY(capturedSignal.ToArray());
+                CaptureWfg.ClearData();  // 기존 데이터를 지우고
+                CaptureWfg.PlotY(capturedSignal.ToArray());  // 새로운 실시간 측정 기반 신호 그리기
             }
+
+            // ---- 커서 설정 (설정된 주기/듀티 사이클 값 기준) ----
+            if (CaptureWfg.Cursors.Count > 0)
+            {
+                CaptureWfg.Cursors.Clear();  // 기존 커서 제거
+            }
+
+            var cursor = new NationalInstruments.UI.XYCursor(CaptureWfg.Plots[0]);
+            CaptureWfg.Cursors.Add(cursor);
+
+            // 기존 커서가 있는지 확인하고, 있으면 위치만 업데이트
+            if (cursor == null)
+            {
+                captureCursor = new NationalInstruments.UI.XYCursor(CaptureWfg.Plots[0]);
+                CaptureWfg.Cursors.Add(cursor);  // 처음에 한 번만 추가
+                captureCursor.Color = System.Drawing.Color.Red;  // 커서 색상 설정
+            }
+
+            // 커서는 이론적인 설정값에 기반해서 찍음
+            double theoreticalHighTime = (double)PeriodEdit.Value * (DutyEdit.Value / 100); // 설정값 기반
+            cursor.XPosition = theoreticalHighTime;  // ontime 지점
+            cursor.YPosition = ao_HighV;  // 설정된 HighV
+
+            cursor.Color = System.Drawing.Color.Red;  // 커서 색상 설정
+
+            // MessageBox로 실시간 측정값과 설정값 비교
+            MessageBox.Show(string.Format("PeriodEdit Value: {0}\nDutyEdit Value: {1}\nTheoretical High Time: {2}",
+                    PeriodEdit.Value, DutyEdit.Value, theoreticalHighTime), "Debug Info");
+            MessageBox.Show(string.Format("실시간 Period: {0}\n실시간 DutyCycle: {1}\ncaptured High Time: {2}",
+                            capturedPeriod, capturedDutyCycle, capturedHighTime), "Captured Info");
         }
 
         private void CaptureButton2_Click(object sender, EventArgs e)
@@ -368,32 +466,67 @@ namespace Week3
                 return;
             }
 
+            // 실시간 계산된 주기 및 듀티 사이클 값 사용 (캡처 버튼을 누른 당시의 값)
+            double capturedPeriod = double.Parse(lblPeriod2.Text);  // 캡처 버튼을 눌렀을 때의 실시간 주기
+            double capturedDutyCycle = double.Parse(lblDuty2.Text); // 캡처 버튼을 눌렀을 때의 실시간 듀티 사이클
+
+            // highTime과 lowTime 계산 (실시간 측정값 기반)
+            double capturedHighTime = (capturedDutyCycle / 100.0) * capturedPeriod;
+            double capturedLowTime = capturedPeriod - capturedHighTime;
+
+            // 실시간 데이터 기반의 PWM 신호 생성
             List<double> capturedSignal = new List<double>();
+            double timeStep = 1.0; // 타임스텝(해상도)
 
-            double calculatedPeriod = double.Parse(lblPeriod2.Text);
-            double calculatedDutyCycle = double.Parse(lblDuty2.Text);
-
-            double highTime = (calculatedDutyCycle / 100.0) * calculatedPeriod;
-            double lowTime = calculatedPeriod - highTime;
-
-            double timeStep = 1.0;
-
-            for (double t = 0; t < calculatedPeriod; t += timeStep)
+            // 한 주기의 PWM 신호 생성
+            for (double t = 0; t < capturedPeriod; t += timeStep)
             {
-                if (t < highTime)
+                if (t < capturedHighTime)
                 {
-                    capturedSignal.Add(1.0);
+                    capturedSignal.Add(3.3);  // High 상태 (실시간 주기 및 듀티 사이클 기반)
                 }
                 else
                 {
-                    capturedSignal.Add(0.0);
+                    capturedSignal.Add(0.0);   // Low 상태 (실시간 주기 및 듀티 사이클 기반)
                 }
             }
 
+            // 캡처된 신호를 그래프에 표시
             if (capturedSignal.Count > 0)
             {
-                CaptureWfg2.PlotY(capturedSignal.ToArray());
+                CaptureWfg2.ClearData();  // 기존 데이터를 지우고
+                CaptureWfg2.PlotY(capturedSignal.ToArray());  // 새로운 실시간 측정 기반 신호 그리기
             }
+
+            // ---- 커서 설정 (설정된 주기/듀티 사이클 값 기준) ----
+            if (CaptureWfg2.Cursors.Count > 0)
+            {
+                CaptureWfg2.Cursors.Clear();  // 기존 커서 제거
+            }
+
+            var cursor = new NationalInstruments.UI.XYCursor(CaptureWfg2.Plots[0]);
+            CaptureWfg2.Cursors.Add(cursor);
+
+            // 기존 커서가 있는지 확인하고, 있으면 위치만 업데이트
+            if (cursor == null)
+            {
+                cursor = new NationalInstruments.UI.XYCursor(CaptureWfg2.Plots[0]);
+                CaptureWfg2.Cursors.Add(cursor);  // 처음에 한 번만 추가
+                cursor.Color = System.Drawing.Color.Red;  // 커서 색상 설정
+            }
+
+            // 커서는 이론적인 설정값에 기반해서 찍음
+            double theoreticalHighTime = (double)PeriodEdit.Value * (DutyEdit.Value / 100); // 설정값 기반
+            cursor.XPosition = theoreticalHighTime;  // ontime 지점
+            cursor.YPosition = 3.3;  // 설정된 High 값
+
+            cursor.Color = System.Drawing.Color.Red;  // 커서 색상 설정
+
+            // MessageBox로 실시간 측정값과 설정값 비교
+            MessageBox.Show(string.Format("PeriodEdit Value: {0}\nDutyEdit Value: {1}\nTheoretical High Time: {2}",
+                    PeriodEdit.Value, DutyEdit.Value, theoreticalHighTime), "Debug Info");
+            MessageBox.Show(string.Format("실시간 Period: {0}\n실시간 DutyCycle: {1}\ncaptured High Time: {2}",
+                            capturedPeriod, capturedDutyCycle, capturedHighTime), "Captured Info");
         }
 
         private void ResetButton_Click(object sender, EventArgs e)
@@ -403,6 +536,8 @@ namespace Week3
             writer.WriteSingleSample(true, 0);
             ContinuousWfg.ClearData();
             ContinuousWfg2.ClearData();
+            CaptureWfg.ClearData();
+            CaptureWfg2.ClearData();
         }
 
         private void switch1_StateChanged(object sender, NationalInstruments.UI.ActionEventArgs e)
