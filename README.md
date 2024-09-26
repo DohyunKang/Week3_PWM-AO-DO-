@@ -21,6 +21,20 @@
 
 <img width="500" alt="RecordingUI" src="https://github.com/user-attachments/assets/42a7549b-f357-424a-9e95-a297beb12cc2">
 
+### 오실로스코프 신호 캡쳐
+
+#### AO -> AI
+
+<img width="500" alt="Period = 500ms Duty = 50%" src="https://github.com/user-attachments/assets/54976824-286d-41e6-b10a-59620c873232">
+
+<img width="500" alt="Period = 100ms Duty = 10%" src="https://github.com/user-attachments/assets/5b1f39cf-ad56-4a84-8528-577024b0b893">
+
+#### DO -> AI
+
+<img width="500" alt="Period = 500ms Duty = 50%" src="https://github.com/user-attachments/assets/682c5d47-6843-4a71-91c3-54935f3157a7">
+
+<img width="500" alt="Period = 100ms Duty = 10%" src="https://github.com/user-attachments/assets/6760c746-8d19-424c-9249-53aca3142ad9">
+
 ## 설치 방법
 
 1. 이 저장소를 클론합니다:
