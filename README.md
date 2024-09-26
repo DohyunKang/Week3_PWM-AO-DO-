@@ -15,9 +15,9 @@
 
 ### Main UI 화면
 
-<img width="500" alt="MainUI" src="https://github.com/user-attachments/assets/example_main_ui.png">
+<img width="500" alt="MainUI" src="https://github.com/user-attachments/assets/72964dd2-02e0-40e6-9e28-875b48e7e1e9">
 
-### PWM 신호 캡처 화면
+### PWM 신호 작동 화면
 
 <img width="500" alt="CaptureUI" src="https://github.com/user-attachments/assets/example_capture_ui.png">
 
