@@ -1,4 +1,4 @@
-```markdown
+
 # PWM Capture and Measurement Project
 
 ## 설명
@@ -26,7 +26,7 @@
 1. 이 저장소를 클론합니다:
    ```bash
    git clone https://github.com/your-username/pwm-capture-project.git
-   ```
+
 
 2. Visual Studio에서 프로젝트를 엽니다.
 3. 필요한 NI DAQmx 드라이버가 설치되어 있는지 확인합니다.
