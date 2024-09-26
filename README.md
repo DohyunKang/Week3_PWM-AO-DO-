@@ -19,7 +19,7 @@
 
 ### PWM 신호 작동 화면
 
-![PWM_AO - AI   DO - AI](https://github.com/user-attachments/assets/42a7549b-f357-424a-9e95-a297beb12cc2)
+<img width="500" alt="RecordingUI" src="https://github.com/user-attachments/assets/42a7549b-f357-424a-9e95-a297beb12cc2">
 
 ## 설치 방법
 
