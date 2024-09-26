@@ -135,6 +135,7 @@ private async System.Threading.Tasks.Task GeneratePWMAndReadAIAsync()
 - [NI 공식 문서](https://www.ni.com)
 - [Measurement & Automation Explorer (MAX) 사용법](https://www.ni.com/ko-kr/support/downloads/software-products/download.ni-measurement-automation-explorer-(max).html)
 - [PWM 신호의 원리와 활용](https://example.com)
+- [Week3_Pwm 2_DH.pptx](https://github.com/user-attachments/files/17145526/Week3_Pwm.2_DH.pptx)
 
 ## 주의 사항
 - AI 신호를 제대로 읽어오려면 하드웨어 연결 상태와 NI MAX 설정이 올바르게 되어 있는지 확인하세요.
