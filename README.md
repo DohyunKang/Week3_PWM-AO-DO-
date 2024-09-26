@@ -134,7 +134,6 @@ private async System.Threading.Tasks.Task GeneratePWMAndReadAIAsync()
 ## 참고 문서
 - [NI 공식 문서](https://www.ni.com)
 - [Measurement & Automation Explorer (MAX) 사용법](https://www.ni.com/ko-kr/support/downloads/software-products/download.ni-measurement-automation-explorer-(max).html)
-- [PWM 신호의 원리와 활용](https://example.com)
 - [Week3_Pwm 2_DH.pptx](https://github.com/user-attachments/files/17145526/Week3_Pwm.2_DH.pptx)
 
 ## 주의 사항
