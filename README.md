@@ -127,7 +127,7 @@ private async System.Threading.Tasks.Task GeneratePWMAndReadAIAsync()
 ```
 
 ## 요구 사항
-- **Visual Studio 2019 이상**
+- **Visual Studio 2012 이상**
 - **NI DAQmx 드라이버**
 - **National Instruments 하드웨어 (AI, AO, DO 지원)**
 
