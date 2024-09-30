@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -151,7 +151,25 @@ namespace Week3
                 lastPwmTime = currentTime;
 
                 // PWM 신호 생성 (고정된 파라미터로 신호를 만듦)
-                if (ao_pwmStateHigh && ao_pwmElapsed >= ao_highTime)
+                if (ao_highTime == 0)
+                {
+                    writer.WriteSingleSample(true, ao_LowV);
+                    totalHighTime = 0;
+                    totalLowTime = 1000 / ao_frequency;  // 전체 주기를 Low 상태로 설정
+
+                    // 입력된 값으로 UI 업데이트
+                    UpdateUI1(totalLowTime, 0, ao_frequency);
+                }
+                else if (ao_lowTime == 0)
+                {
+                    writer.WriteSingleSample(true, ao_HighV);
+                    totalHighTime = 1000 / ao_frequency;  // 전체 주기를 High 상태로 설정
+                    totalLowTime = 0;
+
+                    // 입력된 값으로 UI 업데이트
+                    UpdateUI1(totalHighTime, 100, ao_frequency);
+                }
+                else if (ao_pwmStateHigh && ao_pwmElapsed >= ao_highTime)
                 {
                     writer.WriteSingleSample(true, ao_LowV);
                     ao_pwmStateHigh = false;
@@ -224,6 +242,16 @@ namespace Week3
             lastPwmTime = DateTime.Now;
         }
 
+        private void UpdateUI1(double period, double duty, double frequency)
+        {
+            this.Invoke((MethodInvoker)delegate
+            {
+                lblPeriod.Text = period.ToString("F2");
+                lblFrequency.Text = frequency.ToString("F2");
+                lblDuty.Text = duty.ToString("F2");  // 계산된 Duty가 아니라 입력된 Duty 그대로 표시
+            });
+        }
+
 
         // DO 신호 생성 및 AI 신호 측정 로직
         private async System.Threading.Tasks.Task GenerateDigitalPWM()
@@ -245,7 +273,27 @@ namespace Week3
                 lastPwmTime = currentTime;
 
                 // PWM 신호 생성
-                if (do_pwmStateHigh && do_pwmElapsed >= do_highTime)
+                if (do_highTime == 0)
+                {
+                    digitalWriter.WriteSingleSampleSingleLine(true, false);
+
+                    totalHighTime = 0;
+                    totalLowTime = 1000 / do_frequency;  // 전체 주기를 Low 상태로 설정
+
+                    // 입력된 값으로 UI 업데이트
+                    UpdateUI2(totalLowTime, 0, do_frequency);
+                }
+                else if (do_lowTime == 0)
+                {
+                    digitalWriter.WriteSingleSampleSingleLine(true, true);
+
+                    totalHighTime = 1000 / do_frequency;  // 전체 주기를 High 상태로 설정
+                    totalLowTime = 0;
+
+                    // 입력된 값으로 UI 업데이트
+                    UpdateUI2(totalHighTime,100, do_frequency);
+                }
+                else if (do_pwmStateHigh && do_pwmElapsed >= do_highTime)
                 {
                     digitalWriter.WriteSingleSampleSingleLine(true, false);  // Low 상태로 전환
                     do_pwmStateHigh = false;
@@ -306,6 +354,16 @@ namespace Week3
             }
 
             lastPwmTime = DateTime.Now;
+        }
+
+        private void UpdateUI2(double period, double duty, double frequency)
+        {
+            this.Invoke((MethodInvoker)delegate
+            {
+                lblPeriod2.Text = period.ToString("F2");
+                lblFrequency2.Text = frequency.ToString("F2");
+                lblDuty2.Text = duty.ToString("F2");  // 계산된 Duty가 아니라 입력된 Duty 그대로 표시
+            });
         }
 
 
